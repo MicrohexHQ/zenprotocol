@@ -26,9 +26,9 @@ type Argument =
     | Miner of threads:int option
 #if DEBUG
     // non-zero indexed nodes act as outbound nodes which connect to the zero-indexed inbound node
-    | Local of int
+    | [<Hidden>] Local of int
 #endif
-    | [<Hidden>] Seed
+    | [<Hidden>]Seed
     | AddressDB
     | Data_Path of string
     | Service_Bus of string
@@ -41,17 +41,13 @@ type Argument =
                 | Bind _ -> "set the address the node should listen on"
                 | Test -> "use testnet"
                 | Ip _ -> "specify the IP the node should relay to other peers"
-                | Wipe _ -> "wipe database, specify full to wipe the wallet's private key"
+                | Wipe _ -> "wipe database, specify full to wipe wallet private key"
                 | Miner _ -> "enable miner and optionally specify number of threads"
-                | Seed -> "run node as a seed"
                 | AddressDB -> "enable the AddressDB module"
                 | Data_Path _ -> "set the data folder path"
                 | Service_Bus _ -> "expose the service bus over zeromq address"
                 | Publisher _ -> "expose the publisher over zeromq address"
-#if DEBUG
-                | Local _ -> "local mode, used for debugging. specify zero value for host, other for client"
-#endif
-
+                | _ -> ""
 
 type Config = YamlConfig<"scheme.yaml">
 
@@ -131,7 +127,7 @@ let main argv =
 
     if List.contains Test (results.GetAllResults()) then
         config.Load("test.yaml")
-    else 
+    else
         config.Load("main.yaml")
 
     List.iter (fun arg ->
@@ -141,7 +137,7 @@ let main argv =
             let getEndpoint port idx = sprintf "%s:%i" Localhost (port + idx)
 
             chain <- Chain.Local
-            config.dataPath <- sprintf "./data/local/%i" idx
+            config.dataPath <- sprintf "./data/l%i" idx
             config.chain <- "local"
             config.externalIp <- Localhost
             config.bind <- getEndpoint 10000 idx
