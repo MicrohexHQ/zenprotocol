@@ -120,67 +120,26 @@ type Arguments =
             | RawTx_Create _ -> "create a raw transaction that pass the asset and amount to the address"
             | RawTx_Sign _ -> "sign all possible inputs of the raw transaction and return the signed transaction"
             | RawTx_Publish _ -> "publish a fully signed raw transaction"
-            | Wallet_Create _ -> "create a wallet from a newly generated mnemonic phrase"
-            | Blockchain_Info _ -> "get blockchain info"
+            | Wallet_Create _ -> "Generate new mnemonic phrase and creating a wallet. Use mnemonichhrase command to get the newly generated mnemonic phrase."
             | _ -> ""
-
-
-let getUri' = sprintf "http://127.0.0.1:%d/%s"
-    
-let errorHandler =
-    let colorizer = function | ErrorCode.HelpText -> None
-                             | _ -> Some ConsoleColor.Red
-    ProcessExiter colorizer
-
-let exit (errorMsg: string): 'a =
-    (errorHandler :> IExiter).Exit(errorMsg, ErrorCode.AppSettings (*=1*))
-
-let getResponse ({Body=body;StatusCode=statusCode}: HttpResponse) =
-        let text = match body with
-                   | Text text -> text
-                   | Binary bytes -> Text.Encoding.ASCII.GetString bytes
-
-        if statusCode <> 200 then exit text else text
-
-let printResponse = getResponse >> printfn "%s"
-
-// read from console, hiding input text
-let readMasked(): string =
-    let rec read (acc: list<char>): string =
-        let keyInfo = Console.ReadKey(true)
-        if keyInfo.Key = ConsoleKey.Enter then
-            List.rev acc
-            |> Array.ofList
-            |> System.String
-        elif keyInfo.Key = ConsoleKey.Backspace then
-            match acc with
-            | _::tl | tl -> read tl
-        elif Char.IsControl keyInfo.KeyChar then
-            read acc
-        else
-            read (keyInfo.KeyChar::acc)
-    read []
-
-// prompts the user to input a password, and returns the supplied password
-let readPassword(): string =
-    printfn "Enter password:"
-    readMasked()
 
 [<EntryPoint>]
 let main argv =
-    let parser = ArgumentParser.Create<Arguments>(programName = "zen-ctl", errorHandler = errorHandler)
+    let errorHandler = ProcessExiter(colorizer = function ErrorCode.HelpText -> None | _ -> Some ConsoleColor.Red)
+    let parser = ArgumentParser.Create<Arguments>(programName = "zen-cli.exe", errorHandler = errorHandler)
 
     let results = parser.ParseCommandLine argv
 
-    let mutable getUri : (string -> string) = getUri' 11567us    
-    
-    List.iter (function
-        | Port p -> getUri <- getUri' p
-        | Test -> getUri <- getUri' 31567us
+    let mutable port = 11567us
+
+    List.iter (fun arg ->
+        match arg with
+        | Port p -> port <- p
+        | Test -> port <- 31567us
 #if DEBUG
-        | Local idx -> getUri <- getUri' (20000us + idx)
-#endif
+        | Local idx -> port <- 20000us + idx
         | _ -> ()
+#endif
         ) (results.GetAllResults())
     
     let saveRawToFile (response : HttpResponse) =
